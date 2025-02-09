@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import axios from "axios"
 import { primsaClient } from "../../clients/db"
 import JWTservice from "../../services/jwt"
+import { graphqlContext } from "./interfaces"
 interface GoogleTokenResult{
     iss?: string
     azp?: string
@@ -57,6 +58,19 @@ const queries={
          }
          const userToken=JWTservice.generatetokenForUSer(userIndb)
         return userToken
+    },
+    getCurrentUser:async(parent:any,args:any,ctx:graphqlContext)=>{
+        console.log(ctx);
+        
+        const id= ctx.user?.id
+        if(!id){
+            return null
+        }
+        const user=await primsaClient.user.findUnique({
+            where:{id}
+        })
+        return user
+        
     }
 }
 

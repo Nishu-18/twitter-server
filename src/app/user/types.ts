@@ -1,7 +1,7 @@
 export const types=`#graphql
     type User{
     id:ID!
-    fisrtName:String!
+    firstName:String!
     lastName:String
     email:String!
     profileImageUrl:String

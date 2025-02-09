@@ -4,7 +4,7 @@ exports.types = void 0;
 exports.types = `#graphql
     type User{
     id:ID!
-    fisrtName:String!
+    firstName:String!
     lastName:String
     email:String!
     profileImageUrl:String
