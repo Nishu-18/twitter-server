@@ -63,4 +63,13 @@ const queries = {
         return user;
     })
 };
-exports.resolvers = { queries };
+const extraResolvers = {
+    User: {
+        tweets: (parent) => db_1.primsaClient.tweet.findMany({
+            where: {
+                author: { id: parent.id }
+            }
+        })
+    }
+};
+exports.resolvers = { queries, extraResolvers };
