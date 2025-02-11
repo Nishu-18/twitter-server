@@ -59,8 +59,10 @@ const queries={
          const userToken=JWTservice.generatetokenForUSer(userIndb)
         return userToken
     },
+    getUserById:async(parent:any,{id}:{id:string},ctx:graphqlContext)=>primsaClient.user.findUnique({where:{id}})
+    ,
     getCurrentUser:async(parent:any,args:any,ctx:graphqlContext)=>{
-        console.log(ctx);
+        
         
         const id= ctx.user?.id
         if(!id){

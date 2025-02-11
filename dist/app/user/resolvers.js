@@ -50,9 +50,9 @@ const queries = {
         const userToken = jwt_1.default.generatetokenForUSer(userIndb);
         return userToken;
     }),
+    getUserById: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { id }, ctx) { return db_1.primsaClient.user.findUnique({ where: { id } }); }),
     getCurrentUser: (parent, args, ctx) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
-        console.log(ctx);
         const id = (_a = ctx.user) === null || _a === void 0 ? void 0 : _a.id;
         if (!id) {
             return null;
