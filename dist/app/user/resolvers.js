@@ -16,6 +16,7 @@ exports.resolvers = void 0;
 const axios_1 = __importDefault(require("axios"));
 const db_1 = require("../../clients/db");
 const jwt_1 = __importDefault(require("../../services/jwt"));
+const redis_1 = require("../../clients/redis");
 const queries = {
     verifyGoogleToken: (parent_1, _a) => __awaiter(void 0, [parent_1, _a], void 0, function* (parent, { token }) {
         const googleToken = token;
@@ -69,7 +70,70 @@ const extraResolvers = {
             where: {
                 author: { id: parent.id }
             }
+        }),
+        followers: (parent) => __awaiter(void 0, void 0, void 0, function* () {
+            const result = yield db_1.primsaClient.follows.findMany({ where: { following: { id: parent.id } }, include: { follower: true } });
+            return result.map((el) => el.follower);
+        }),
+        following: (parent) => __awaiter(void 0, void 0, void 0, function* () {
+            const result = yield db_1.primsaClient.follows.findMany({ where: { follower: { id: parent.id } }, include: { following: true } });
+            return result.map((el) => el.following);
+        }),
+        recommendedUsers: (parent, _, ctx) => __awaiter(void 0, void 0, void 0, function* () {
+            if (!ctx.user)
+                return [];
+            const cachedValue = yield redis_1.redisClient.get(`RECOMMENDED_USERS:${ctx.user.id}`);
+            if (cachedValue) {
+                return JSON.parse(cachedValue);
+            }
+            const myfollowings = yield db_1.primsaClient.follows.findMany({
+                where: {
+                    follower: { id: ctx.user.id }
+                },
+                include: { following: { include: { followers: { include: { following: true } } } } }
+            });
+            const users = [];
+            for (const followings of myfollowings) {
+                for (const followingOfFollowedUser of followings.following.followers) {
+                    if (followingOfFollowedUser.following.id !== ctx.user.id && myfollowings.findIndex(e => e.followingId === followingOfFollowedUser.following.id) < 0) {
+                        users.push(followingOfFollowedUser.following);
+                    }
+                }
+            }
+            yield redis_1.redisClient.set(`RECOMMENDED_USERS:${ctx.user.id}`, JSON.stringify(users));
+            return users;
         })
     }
 };
-exports.resolvers = { queries, extraResolvers };
+const mutation = {
+    followUser: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { to }, ctx) {
+        if (!ctx.user || !ctx.user.id) {
+            throw new Error('UnAuthenticated!');
+        }
+        try {
+            const followEntry = yield db_1.primsaClient.follows.create({
+                data: {
+                    follower: { connect: { id: ctx.user.id } },
+                    following: { connect: { id: to } }
+                }
+            });
+            yield redis_1.redisClient.del(`RECOMMENDED_USERS:${ctx.user.id}`);
+            return true; // Ensure true is returned on success
+        }
+        catch (error) {
+            console.error("Error in followUser mutation:", error);
+            throw new Error("Failed to follow user");
+        }
+    }),
+    unFollowUser: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { to }, ctx) {
+        if (!ctx.user || !ctx.user.id) {
+            throw new Error('UnAuthenticated!');
+        }
+        yield db_1.primsaClient.follows.delete({
+            where: { followerId_followingId: { followerId: ctx.user.id, followingId: to } }
+        });
+        yield redis_1.redisClient.del(`RECOMMENDED_USERS:${ctx.user.id}`);
+        return true;
+    })
+};
+exports.resolvers = { queries, extraResolvers, mutation };
